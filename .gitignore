@@ -172,3 +172,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Build artifacts
+/dist/
+/build/
+/*.egg-info/
+
+# Test scrips
+test/*
