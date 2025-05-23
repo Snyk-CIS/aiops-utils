@@ -1,5 +1,5 @@
 # AI Operations Utilities
-A collection of lightweight, reusable Python helpers built and maintained by the **Snyk AI Operations Team**. This toolkit is distributed as an open-source Git repository so it can be pulled into any workflow that needs to interact with Snyk’s internal or external knowledge sources.
+A collection of lightweight, reusable Python helpers built and maintained by the **Snyk AI Operations Team**. 
 
 ---
 
