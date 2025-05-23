@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiops-utils"
+version = "0.1.1"
+description = "Utilities for AI Operations Team at Snyk."
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "requests>=2.32.3",
+    "httpx>=0.25",
+    "langchain-core>=0.1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["aiops_utils", "aiops_utils.retrievers"]
