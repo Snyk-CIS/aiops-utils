@@ -30,6 +30,7 @@ Example usage (advanced):
 
 from __future__ import annotations
 
+import os
 import socket
 from typing import Any, Dict, List, Optional, Union
 
@@ -45,6 +46,12 @@ from langchain_core.retrievers import BaseRetriever
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Check environment variable and set debug logging if needed
+environment = os.environ.get("environment")
+if environment in ["DEV"]:
+    logger.setLevel(logging.DEBUG)
+    logger.debug("🔧 Setting logger to DEBUG level in %s environment", environment)
 
 # --------------------------------------------------------------------------------------
 # Retriever implementation
