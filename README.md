@@ -1,5 +1,5 @@
 # AI Operations Utilities
-A collection of lightweight, reusable Python helpers built and maintained by the **Snyk AI Operations Team**. 
+A collection of lightweight, reusable Python helpers built and maintained by the **Snyk AI Operations Team**.
 
 ---
 
@@ -14,7 +14,7 @@ A collection of lightweight, reusable Python helpers built and maintained by the
 ## 📦 Installation
 
 ```bash
-pip install git+https://github.com/snyk/aiops-utils.git
+pip install git+https://github.com/Snyk-CIS/aiops-utils.git
 ```
 
 Python ≥ 3.10 is required.
