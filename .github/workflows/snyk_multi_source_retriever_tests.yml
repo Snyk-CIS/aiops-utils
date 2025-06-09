@@ -32,4 +32,4 @@ jobs:
           pip install pytest
 
       - name: Run unit tests 🧪
-        run: pytest -q tests/test_snyk_multi_source_retriever.py
+        run: pytest -s --log-cli-level=INFO tests/test_snyk_multi_source_retriever.py
