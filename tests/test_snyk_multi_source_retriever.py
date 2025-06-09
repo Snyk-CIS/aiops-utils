@@ -1,6 +1,8 @@
 import os
 from aiops_utils.retrievers.snyk_multi_source_retriever import SnykMultiSourceRetriever
-from utils.logger_config import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 REQUIRED_VARS = ["JWT_TOKEN", "APP_NAME", "SERVICE_NAMES"]
 
@@ -8,6 +10,11 @@ REQUIRED_VARS = ["JWT_TOKEN", "APP_NAME", "SERVICE_NAMES"]
 def _missing_env():
     return [v for v in REQUIRED_VARS if not os.getenv(v)]
 
+
+missing = _missing_env()
+if missing:
+    logger.error("❌ Missing required environment variables: %s", ", ".join(missing))
+    raise SystemExit(1)
 
 # Test simple retrieval and all data sources - Check all services were run
 logger.info(
