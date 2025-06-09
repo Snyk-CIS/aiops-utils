@@ -1,0 +1,35 @@
+# Github Action to run SnykMultiSourceRetriever unit tests on every Pull Request
+name: Snyk Multi Source Retriever Tests
+
+on:
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Map GitHub secrets to environment variables consumed in tests
+      JWT_TOKEN: ${{ secrets.JWT_TOKEN }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      SERVICE_NAMES: ${{ secrets.SERVICE_NAMES }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install project in editable mode so tests import the local sources
+          pip install -e .
+          # Install test runner
+          pip install pytest
+
+      - name: Run unit tests 🧪
+        run: pytest -q tests/test_snyk_multi_source_retriever.py

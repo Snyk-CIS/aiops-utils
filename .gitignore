@@ -180,3 +180,4 @@ cython_debug/
 
 # Test scrips
 test/*
+.DS_Store
