@@ -229,39 +229,41 @@ class SnykMultiSourceRetriever(BaseRetriever):
         # ---------------------------
         # Build services section from flattened parameters
         # ---------------------------
-        services_list = []
-        if self.service_names:
-            names = (
-                [self.service_names]
-                if isinstance(self.service_names, str)
-                else self.service_names
-            )
-            for service_name in names:
-                service_obj = {"name": service_name}
+        names: List[str] = []
+        if isinstance(self.service_names, str):
+            if self.service_names.lower() == "all":
+                # special keyword: query every backend, no per-service settings applied
+                services_list = [{"service": "all"}]
+            else:
+                names = [self.service_names]
+        else:
+            names = self.service_names or []
 
-                # Add max_documents if available for this service
-                if (
-                    self.service_max_documents
-                    and service_name in self.service_max_documents
-                ):
-                    service_obj["max_documents"] = self.service_max_documents[
-                        service_name
-                    ]
+        # Build detailed service objects when we have explicit service names
+        for service_name in names:
+            service_obj = {"service": service_name}
 
-                # Add confidence_threshold if available for this service
-                if (
-                    self.service_confidence_thresholds
-                    and service_name in self.service_confidence_thresholds
-                ):
-                    service_obj["confidence_threshold"] = (
-                        self.service_confidence_thresholds[service_name]
-                    )
+            # Add max_documents if available for this service
+            if (
+                self.service_max_documents
+                and service_name in self.service_max_documents
+            ):
+                service_obj["max_documents"] = self.service_max_documents[service_name]
 
-                # Add filter if available for this service
-                if self.service_filters and service_name in self.service_filters:
-                    service_obj["filter"] = self.service_filters[service_name]
+            # Add confidence_threshold if available for this service
+            if (
+                self.service_confidence_thresholds
+                and service_name in self.service_confidence_thresholds
+            ):
+                service_obj["confidence_threshold"] = (
+                    self.service_confidence_thresholds[service_name]
+                )
 
-                services_list.append(service_obj)
+            # Add filter if available for this service
+            if self.service_filters and service_name in self.service_filters:
+                service_obj["filter"] = self.service_filters[service_name]
+
+            services_list.append(service_obj)
 
         # Only add services to payload if we have any
         if services_list:
