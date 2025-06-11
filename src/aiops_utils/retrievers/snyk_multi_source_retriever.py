@@ -229,7 +229,9 @@ class SnykMultiSourceRetriever(BaseRetriever):
         # ---------------------------
         # Build services section from flattened parameters
         # ---------------------------
+        services_list: List[Dict[str, Any]] = []
         names: List[str] = []
+
         if isinstance(self.service_names, str):
             if self.service_names.lower() == "all":
                 # special keyword: query every backend, no per-service settings applied
