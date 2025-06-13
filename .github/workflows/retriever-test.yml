@@ -26,4 +26,6 @@ jobs:
           TEST_SOURCE_A: ${{ secrets.TEST_SOURCE_A }}
           TEST_SOURCE_B: ${{ secrets.TEST_SOURCE_B }}
           TEST_FILTER_A: ${{ secrets.TEST_FILTER_A }}
+          USE_DIRECT_URL: "true"
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: python scripts/test_retriever.py

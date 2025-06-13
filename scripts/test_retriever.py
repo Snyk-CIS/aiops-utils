@@ -6,7 +6,6 @@ variables to be set:
 
 * ``JWT_TOKEN`` – bearer token used by the retriever
 * ``APP_NAME``  – application name used for service-discovery DNS
-* ``SERVICE_NAMES`` – comma-separated list or JSON list of service names
 
 This script is intended to be executed inside CI (see ``.github/workflows``) or
 locally for quick validation.
@@ -15,13 +14,17 @@ locally for quick validation.
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import sys
 from typing import Any, Dict, List
 
 from aiops_utils.retrievers import SnykMultiSourceRetriever
 import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
 
 logger = logging.getLogger("aiops-utils")
 # ---------------------------------------------------------------------------#
@@ -32,11 +35,32 @@ app_name: str | None = os.getenv("APP_NAME")
 
 if not jwt_token or not app_name:
     logger.error(
-        "❌ Environment variables JWT_TOKEN, APP_NAME and SERVICE_NAMES are required. Received JWT_TOKEN=%s, APP_NAME=%s",
+        "❌ Environment variables JWT_TOKEN, APP_NAME are required. Received JWT_TOKEN=%s, APP_NAME=%s",
         bool(jwt_token),
         bool(app_name),
     )
     sys.exit(1)
+
+# Get Heroku direct URL if available (preferred for GitHub Actions and local testing)
+use_direct_url = os.getenv("USE_DIRECT_URL", "true").lower() in ("true", "1", "yes")
+direct_url = os.getenv("DIRECT_URL")
+
+if use_direct_url and not direct_url:
+    logger.warning("⚠️ USE_DIRECT_URL is enabled but no DIRECT_URL is provided")
+
+# Patch the _get_search_url method before any retrievers are created
+if use_direct_url and direct_url:
+    # Store original method for restoration at the end
+    original_get_search_url = SnykMultiSourceRetriever._get_search_url
+
+    # Define replacement method that returns the direct Heroku URL
+    def direct_url_method(self):
+        logger.info("🔗 Using direct Heroku URL: %s", direct_url)
+        return direct_url
+
+    # Apply the patch globally
+    SnykMultiSourceRetriever._get_search_url = direct_url_method
+    logger.info("👉 Patched retriever to use direct URL mode")
 
 # Get source names from environment if available
 source_a = os.getenv("TEST_SOURCE_A")
@@ -49,7 +73,7 @@ source_a_filter = os.getenv("TEST_FILTER_A")
 TEST_CASES: List[Dict[str, Any]] = [
     # 1) Baseline using SERVICE_NAMES provided via secret
     {
-        "description": "Baseline – secret service names",
+        "description": "Baseline – all sources",
         "service_names": "all",
     },
     # 2) Single source with grading disabled
@@ -82,7 +106,7 @@ TEST_CASES: List[Dict[str, Any]] = [
     {
         "description": "Multi-source with confidence thresholds",
         "service_names": [source_a, source_b],
-        "service_confidence_thresholds": {source_a: 0.8, source_b: 0.9},
+        "service_confidence_thresholds": {source_a: 3.0, source_b: 2.0},
     },
     # 7) Rerank configuration test
     {
@@ -107,6 +131,7 @@ def run_test_case(case: Dict[str, Any]) -> None:
     logger.info("\n🧪 Running test case ⇒ %s", description)
 
     try:
+        # Create retriever with all parameters (direct URL already patched if enabled)
         retriever = SnykMultiSourceRetriever(
             jwt_token=jwt_token,
             app_name=app_name,
@@ -129,6 +154,12 @@ def run_test_case(case: Dict[str, Any]) -> None:
 
 
 if __name__ == "__main__":
-    for test_case in TEST_CASES:
-        # Each test runs independently so failures don't abort subsequent cases
-        run_test_case(test_case.copy())
+    try:
+        for test_case in TEST_CASES:
+            # Each test runs independently so failures don't abort subsequent cases
+            run_test_case(test_case.copy())
+    finally:
+        # Restore original method if we patched it
+        if use_direct_url and direct_url and "original_get_search_url" in globals():
+            logger.info("🔄 Restoring original _get_search_url method")
+            SnykMultiSourceRetriever._get_search_url = original_get_search_url
