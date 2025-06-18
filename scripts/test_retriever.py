@@ -75,12 +75,13 @@ TEST_CASES: List[Dict[str, Any]] = [
     {
         "description": "Baseline – all sources",
         "service_names": "all",
+        "grading": False,
     },
     # 2) Single source with grading disabled
     {
-        "description": "Single data source (max 30 docs) - no grading",
+        "description": "Single data source (max 5 docs) - no grading",
         "service_names": [source_a],
-        "service_max_documents": {source_a: 30},
+        "service_max_documents": {source_a: 5},
         "grading": False,
     },
     # 3) Single source with grading enabled
@@ -94,25 +95,29 @@ TEST_CASES: List[Dict[str, Any]] = [
     {
         "description": "Single source with filter",
         "service_names": [source_a],
-        "service_filters": {source_a: {"SOURCE": source_a_filter}},
+        "service_filters": {source_a: {"@eq": {"source": source_a_filter}}},
+        "grading": False,
     },
     # 5) Multi-source with max documents
     {
         "description": "Multi-source with max documents",
         "service_names": [source_a, source_b],
         "service_max_documents": {source_a: 4, source_b: 2},
+        "grading": False,
     },
     # 6) Multi-source with confidence thresholds
     {
         "description": "Multi-source with confidence thresholds",
         "service_names": [source_a, source_b],
         "service_confidence_thresholds": {source_a: 3.0, source_b: 2.0},
+        "grading": False,
     },
     # 7) Rerank configuration test
     {
         "description": "Rerank parameters test",
         "service_names": "all",
-        "rerank_confidence_threshold": 0.9,
+        "rerank_confidence_threshold": 0.95,
+        "grading": True,
     },
 ]
 
@@ -121,6 +126,9 @@ QUERY = "What is Snyk Code?"  # simple query for smoke-test
 # ---------------------------------------------------------------------------#
 # Execution helpers
 # ---------------------------------------------------------------------------#
+
+# Store per-test run statistics so we can print a summary at the end
+RESULTS: List[Dict[str, Any]] = []
 
 
 def run_test_case(case: Dict[str, Any]) -> None:
@@ -144,13 +152,36 @@ def run_test_case(case: Dict[str, Any]) -> None:
         else:
             documents = retriever.invoke(QUERY)
 
-        logger.info("✅ %s — received %d documents", description, len(documents))
+        # Determine whether the document count is sensible (>0)
+        if len(documents) == 0:
+            verdict_emoji = "🔴"  # automatic fail
+        elif len(documents) == 1:
+            verdict_emoji = "🟠"  # suspicious, needs review
+        else:
+            verdict_emoji = "✅"
+        logger.info(
+            "%s %s — received %d documents", verdict_emoji, description, len(documents)
+        )
 
-        if documents:
-            logger.info("📄 First doc snippet: %.120s…", documents[0].page_content)
+        # Persist results so we can output a summary after all tests have run
+        RESULTS.append(
+            {
+                "description": description,
+                "count": len(documents),
+                "verdict": verdict_emoji,
+            }
+        )
+
     # pylint: disable=broad-except
     except Exception as exc:
         logger.error("💥 %s — failed with error: %s", description, exc)
+        RESULTS.append(
+            {
+                "description": description,
+                "count": 0,
+                "verdict": "🔴",
+            }
+        )
 
 
 if __name__ == "__main__":
@@ -159,7 +190,16 @@ if __name__ == "__main__":
             # Each test runs independently so failures don't abort subsequent cases
             run_test_case(test_case.copy())
     finally:
+        # Print high-level summary for quick human review
+        logger.info("\n📊 Test run summary")
+        for result in RESULTS:
+            logger.info(
+                "%s %s ⇒ %d documents",
+                result["verdict"],
+                result["description"],
+                result["count"],
+            )
+
         # Restore original method if we patched it
         if use_direct_url and direct_url and "original_get_search_url" in globals():
-            logger.info("🔄 Restoring original _get_search_url method")
             SnykMultiSourceRetriever._get_search_url = original_get_search_url
