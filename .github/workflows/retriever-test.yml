@@ -30,7 +30,7 @@ jobs:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           set -euo pipefail
-          python scripts/test_retriever.py | tee test_output.log
+          python scripts/test_retriever.py 2>&1 | tee test_output.log
           if grep -q "🔴" test_output.log; then
             echo "❌ Failing test cases detected (🔴 emoji present). Exiting with failure."
             exit 1
