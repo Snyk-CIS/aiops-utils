@@ -32,6 +32,7 @@ retriever = SnykMultiSourceRetriever(
     jwt_token="<YOUR_JWT_TOKEN>",     # Bearer token for authentication
     app_name="my-search-service",     # DNS label of the backend application
     service_names="all",              # or a list like ["SOURCE_A", "SOURCE_B"]
+    grading=True,                      # request extra grading metadata
 )
 
 results = retriever.invoke("How do I reset my credentials?")
@@ -48,3 +49,4 @@ Key constructor flags:
 | `service_names` | Either `'all'` or a list of specific back-end sources. |
 | `service_max_documents` / `service_confidence_thresholds` | Per-source overrides. |
 | `rerank_max_documents` / `rerank_confidence_threshold` | Control the re-ranking stage. |
+| `grading` | Boolean. When `True`, the backend returns per-token confidence scores enabling answer quality evaluation. |
