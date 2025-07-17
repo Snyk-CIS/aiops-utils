@@ -119,6 +119,13 @@ TEST_CASES: List[Dict[str, Any]] = [
         "rerank_confidence_threshold": 0.95,
         "grading": True,
     },
+    # 8) User email tracking test
+    {
+        "description": "User email tracking test",
+        "service_names": "all",
+        "user_email": "test.user@example.com",
+        "grading": True,
+    },
 ]
 
 QUERY = "What is Snyk Code?"  # simple query for smoke-test
