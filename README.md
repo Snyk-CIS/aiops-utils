@@ -60,8 +60,3 @@ Key constructor flags:
 | `rerank_confidence_threshold` | ❌ | Minimum confidence threshold for re-ranked results. |
 | `grading` | ❌ | When `True`, the backend returns per-token confidence scores. Defaults to `None`. |
 | `user_email` | ❌ | Email address of the user making the request. Used for tracking. Defaults to `None`. |
-| `process_type` | ❌ | Type of process to connect to. Defaults to `'worker'`. |
-| `port` | ❌ | Port number to connect to. Defaults to `5000`. |
-| `specific_dyno` | ❌ | Target a specific dyno instead of using round-robin DNS. Defaults to `None`. |
-| `timeout` | ❌ | Timeout (seconds) for HTTP requests. Defaults to `30`. |
-| `verify_ssl` | ❌ | Whether to verify SSL/TLS certificates. Defaults to `True`. |
