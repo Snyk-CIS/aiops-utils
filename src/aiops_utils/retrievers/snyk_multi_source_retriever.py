@@ -21,7 +21,8 @@ Example usage (advanced):
         service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
         service_confidence_thresholds={"SOURCE_A": 1.0, "SOURCE_B": 1.0},
         rerank_max_documents=5,
-        rerank_confidence_threshold=0.8
+        rerank_confidence_threshold=0.8,
+        user_email="user@example.com"  # Optional: specify user email for tracking
     )
 
     documents = retriever.invoke("How do I reset my credentials?")
@@ -101,6 +102,9 @@ class SnykMultiSourceRetriever(BaseRetriever):
         Confidence threshold for reranking.
     grading : bool, optional
         If set, include grading in the payload. Defaults to None (not sent).
+    user_email : str, optional
+        Email address of the user making the request. Used for tracking and analytics.
+        Defaults to None (not sent).
 
     """
 
@@ -127,6 +131,7 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     # Additional parameters
     grading: Optional[bool] = None
+    user_email: Optional[str] = None
 
     def _get_search_url(self):
         """Build the search URL using DNS Service Discovery."""
@@ -289,6 +294,10 @@ class SnykMultiSourceRetriever(BaseRetriever):
         # Add grading if specified
         if self.grading is not None:
             payload["grading"] = self.grading
+
+        # Add user_email if specified
+        if self.user_email is not None:
+            payload["user_email"] = self.user_email
 
         logger.debug("📝 Built payload: %s", payload)
         return payload

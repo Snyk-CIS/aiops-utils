@@ -29,24 +29,34 @@ Python ≥ 3.10 is required.
 from aiops_utils.retrievers import SnykMultiSourceRetriever
 
 retriever = SnykMultiSourceRetriever(
-    jwt_token="<YOUR_JWT_TOKEN>",     # Bearer token for authentication
-    app_name="my-search-service",     # DNS label of the backend application
-    service_names="all",              # or a list like ["SOURCE_A", "SOURCE_B"]
-    grading=True,                      # request extra grading metadata
+    jwt_token="your_jwt_token",
+    app_name="your_app_name",
+    service_names=["SOURCE_A", "SOURCE_B"],
+    service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
+    service_confidence_thresholds={"SOURCE_A": 0.9, "SOURCE_B": 1.0},
+    service_filters={"SOURCE_B": {"@eq": {"author": "example_user"}}},
+    rerank_max_documents=5,
+    rerank_confidence_threshold=0.8,
+    user_email="user@example.com",
+    grading=True
 )
 
-results = retriever.invoke("How do I reset my credentials?")
+results = retriever.invoke("How do I rotate my credentials?")
 for doc in results:
     print(doc.page_content)
 ```
 
 Key constructor flags:
 
-| Parameter | Purpose |
-|-----------|---------|
-| `jwt_token` | Auth bearer token passed in the `Authorization` header. |
-| `app_name` | Name of the search service (used for DNS discovery). |
-| `service_names` | Either `'all'` or a list of specific back-end sources. |
-| `service_max_documents` / `service_confidence_thresholds` | Per-source overrides. |
-| `rerank_max_documents` / `rerank_confidence_threshold` | Control the re-ranking stage. |
-| `grading` | Boolean. When `True`, the backend returns per-token confidence scores enabling answer quality evaluation. |
+| Parameter | Required | Purpose |
+|-----------|----------|---------|
+| `jwt_token` | ✅ | Auth bearer token passed in the `Authorization` header. |
+| `app_name` | ✅ | Name of the search service (used for DNS discovery). |
+| `service_names` | ✅ | Either `'all'` or a list of specific back-end sources. |
+| `service_max_documents` | ❌ | Per-source override for maximum number of documents to return. |
+| `service_confidence_thresholds` | ❌ | Per-source override for minimum confidence scores. |
+| `service_filters` | ❌ | Dictionary mapping service names to filter objects. |
+| `rerank_max_documents` | ❌ | Maximum number of documents to return after re-ranking. |
+| `rerank_confidence_threshold` | ❌ | Minimum confidence threshold for re-ranked results. |
+| `grading` | ❌ | When `True`, the backend returns per-token confidence scores. Defaults to `None`. |
+| `user_email` | ❌ | Email address of the user making the request. Used for tracking. Defaults to `None`. |
