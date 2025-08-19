@@ -35,8 +35,6 @@ retriever = SnykMultiSourceRetriever(
     service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
     service_confidence_thresholds={"SOURCE_A": 0.9, "SOURCE_B": 1.0},
     service_filters={"SOURCE_B": {"@eq": {"author": "example_user"}}},
-    rerank_max_documents=5,
-    rerank_confidence_threshold=0.8,
     user_email="user@example.com",
     grading=True
 )
@@ -56,7 +54,5 @@ Key constructor flags:
 | `service_max_documents` | ❌ | Per-source override for maximum number of documents to return. |
 | `service_confidence_thresholds` | ❌ | Per-source override for minimum confidence scores. |
 | `service_filters` | ❌ | Dictionary mapping service names to filter objects. |
-| `rerank_max_documents` | ❌ | Maximum number of documents to return after re-ranking. |
-| `rerank_confidence_threshold` | ❌ | Minimum confidence threshold for re-ranked results. |
 | `grading` | ❌ | When `True`, the backend returns per-token confidence scores. Defaults to `None`. |
 | `user_email` | ❌ | Email address of the user making the request. Used for tracking. Defaults to `None`. |

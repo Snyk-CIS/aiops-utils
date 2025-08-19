@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aiops-utils"
-version = "0.1.8"
+version = "0.1.9"
 description = "Utilities for AI Operations Team at Snyk."
 readme = "README.md"
 requires-python = ">=3.10"
