@@ -112,14 +112,7 @@ TEST_CASES: List[Dict[str, Any]] = [
         "service_confidence_thresholds": {source_a: 3.0, source_b: 2.0},
         "grading": False,
     },
-    # 7) Rerank configuration test
-    {
-        "description": "Rerank parameters test",
-        "service_names": "all",
-        "rerank_confidence_threshold": 0.95,
-        "grading": True,
-    },
-    # 8) User email tracking test
+    # 7) User email tracking test
     {
         "description": "User email tracking test",
         "service_names": "all",

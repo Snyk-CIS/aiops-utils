@@ -20,8 +20,6 @@ Example usage (advanced):
         service_names=["SOURCE_A", "SOURCE_B"],
         service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
         service_confidence_thresholds={"SOURCE_A": 1.0, "SOURCE_B": 1.0},
-        rerank_max_documents=5,
-        rerank_confidence_threshold=0.8,
         user_email="user@example.com"  # Optional: specify user email for tracking
     )
 
@@ -96,10 +94,6 @@ class SnykMultiSourceRetriever(BaseRetriever):
         Dictionary mapping service names to confidence thresholds.
     service_filters : dict[str, dict], optional
         Dictionary mapping service names to filter objects.
-    rerank_max_documents : int, optional
-        Maximum number of documents after reranking.
-    rerank_confidence_threshold : float, optional
-        Confidence threshold for reranking.
     grading : bool, optional
         If set, include grading in the payload. Defaults to None (not sent).
     user_email : str, optional
@@ -124,10 +118,6 @@ class SnykMultiSourceRetriever(BaseRetriever):
     service_max_documents: Optional[Dict[str, int]] = None
     service_confidence_thresholds: Optional[Dict[str, float]] = None
     service_filters: Optional[Dict[str, Dict]] = None
-
-    # Rerank parameters
-    rerank_max_documents: Optional[int] = None
-    rerank_confidence_threshold: Optional[float] = None
 
     # Additional parameters
     grading: Optional[bool] = None
@@ -275,21 +265,6 @@ class SnykMultiSourceRetriever(BaseRetriever):
         # Only add services to payload if we have any
         if services_list:
             payload["services"] = services_list
-
-        # ---------------------------
-        # Build rerank section from flattened parameters
-        # ---------------------------
-        if (
-            self.rerank_max_documents is not None
-            or self.rerank_confidence_threshold is not None
-        ):
-            rerank_obj = {}
-            if self.rerank_max_documents is not None:
-                rerank_obj["max_documents"] = self.rerank_max_documents
-            if self.rerank_confidence_threshold is not None:
-                rerank_obj["confidence_threshold"] = self.rerank_confidence_threshold
-            if rerank_obj:  # Only add if we have any parameters
-                payload["rerank"] = rerank_obj
 
         # Add grading if specified
         if self.grading is not None:
