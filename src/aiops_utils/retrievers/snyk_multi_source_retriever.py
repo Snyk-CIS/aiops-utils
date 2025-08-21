@@ -25,6 +25,18 @@ Example usage (advanced):
 
     documents = retriever.invoke("How do I reset my credentials?")
     ```
+
+Example usage (Kubernetes cluster):
+    ```python
+    retriever = SnykMultiSourceRetriever(
+        jwt_token="your_jwt_token",
+        app_name="your_app_name",  # Still required for payload compatibility
+        service_names="all",
+        use_k8s_cluster=True
+    )
+
+    documents = retriever.invoke("How do I reset my credentials?")
+    ```
 """
 
 from __future__ import annotations
@@ -43,6 +55,11 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
 import logging
+
+# Constants
+# k8s cluster related settings
+K8S_MASTER_RETRIEVER_SERVICE_NAME = "cis-master-retriever"
+K8S_MASTER_RETRIEVER_NAMESPACE = "cis-master-retriever"
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +99,15 @@ class SnykMultiSourceRetriever(BaseRetriever):
         Timeout (seconds) for HTTP requests. Defaults to ``30``.
     verify_ssl : bool, optional
         Whether to verify SSL/TLS certificates. Defaults to ``True``.
+    use_k8s_cluster : bool, optional
+        Whether to use k8s cluster for internal DNS calls.
+        Defaults to ``False``.
+    k8s_master_retriever_service_name : str, optional
+        Kubernetes service name. Used when ``use_k8s_cluster=True``.
+        Defaults to ``cis-master-retriever``.
+    k8s_master_retriever_namespace : str, optional
+        Kubernetes namespace. Used when ``use_k8s_cluster=True``.
+        Defaults to ``cis-master-retriever``.
 
     Retrieval parameters
     -------------------
@@ -113,6 +139,11 @@ class SnykMultiSourceRetriever(BaseRetriever):
     timeout: int = 30
     verify_ssl: bool = True
 
+    # Kubernetes cluster configuration
+    use_k8s_cluster: bool = False
+    k8s_master_retriever_service_name: str = K8S_MASTER_RETRIEVER_SERVICE_NAME
+    k8s_master_retriever_namespace: str = K8S_MASTER_RETRIEVER_NAMESPACE
+
     # Service parameters
     service_names: Union[str, List[str]]
     service_max_documents: Optional[Dict[str, int]] = None
@@ -124,23 +155,30 @@ class SnykMultiSourceRetriever(BaseRetriever):
     user_email: Optional[str] = None
 
     def _get_search_url(self):
-        """Build the search URL using DNS Service Discovery."""
-        # Determine DNS name based on configuration
-        if self.specific_dyno:
-            # Target a specific dyno if requested
-            dns_name = f"{self.specific_dyno}.{self.process_type}.{self.app_name}.app.localspace"
+        """Build the search URL using DNS Service Discovery or Kubernetes cluster DNS."""
+        if self.use_k8s_cluster:
+            # Build Kubernetes cluster URL with fixed service and namespace
+            dns_name = f"{self.k8s_master_retriever_service_name}.{self.k8s_master_retriever_namespace}.svc.cluster.local"
+            url = f"http://{dns_name}/search"
+            logger.debug("🔗 Using Kubernetes cluster URL: %s", url)
+            
         else:
-            # Use round-robin DNS distribution across dynos
-            dns_name = f"{self.process_type}.{self.app_name}.app.localspace"
+            # Determine DNS name based on Dyno configuration
+            if self.specific_dyno:
+                # Target a specific dyno if requested
+                dns_name = f"{self.specific_dyno}.{self.process_type}.{self.app_name}.app.localspace"
+            else:
+                # Use round-robin DNS distribution across dynos
+                dns_name = f"{self.process_type}.{self.app_name}.app.localspace"
 
-        url = f"http://{dns_name}:{self.port}/search"
+            url = f"http://{dns_name}:{self.port}/search"
 
-        try:
-            # Attempt to resolve DNS to confirm connectivity
-            socket.getaddrinfo(dns_name, self.port, socket.AF_INET, socket.SOCK_STREAM)
-            logger.debug("✅ DNS resolution confirmed for %s", dns_name)
-        except socket.gaierror as e:  # pylint: disable=broad-except
-            logger.warning("⚠️ DNS resolution check failed for %s: %s", dns_name, str(e))
+            try:
+                # Attempt to resolve DNS to confirm connectivity
+                socket.getaddrinfo(dns_name, self.port, socket.AF_INET, socket.SOCK_STREAM)
+                logger.debug("✅ DNS resolution confirmed for %s", dns_name)
+            except socket.gaierror as e:  # pylint: disable=broad-except
+                logger.warning("⚠️ DNS resolution check failed for %s: %s", dns_name, str(e))
 
         return url
 
