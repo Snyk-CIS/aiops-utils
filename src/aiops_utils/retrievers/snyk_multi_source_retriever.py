@@ -100,10 +100,14 @@ class SnykMultiSourceRetriever(BaseRetriever):
     verify_ssl : bool, optional
         Whether to verify SSL/TLS certificates. Defaults to ``True``.
     use_k8s_cluster : bool, optional
-        Whether to use Kubernetes cluster DNS for URL construction instead of Heroku
-        dyno DNS. When enabled, uses fixed service and namespace values
-        (cis-master-retriever.cis-master-retriever.svc.cluster.local).
+        Whether to use k8s cluster for internal DNS calls.
         Defaults to ``False``.
+    k8s_master_retriever_service_name : str, optional
+        Kubernetes service name. Used when ``use_k8s_cluster=True``.
+        Defaults to ``cis-master-retriever``.
+    k8s_master_retriever_namespace : str, optional
+        Kubernetes namespace. Used when ``use_k8s_cluster=True``.
+        Defaults to ``cis-master-retriever``.
 
     Retrieval parameters
     -------------------
@@ -137,6 +141,8 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     # Kubernetes cluster configuration
     use_k8s_cluster: bool = False
+    k8s_master_retriever_service_name: str = K8S_MASTER_RETRIEVER_SERVICE_NAME
+    k8s_master_retriever_namespace: str = K8S_MASTER_RETRIEVER_NAMESPACE
 
     # Service parameters
     service_names: Union[str, List[str]]
@@ -152,12 +158,12 @@ class SnykMultiSourceRetriever(BaseRetriever):
         """Build the search URL using DNS Service Discovery or Kubernetes cluster DNS."""
         if self.use_k8s_cluster:
             # Build Kubernetes cluster URL with fixed service and namespace
-            dns_name = f"{K8S_MASTER_RETRIEVER_SERVICE_NAME}.{K8S_MASTER_RETRIEVER_NAMESPACE}.svc.cluster.local"
+            dns_name = f"{self.k8s_master_retriever_service_name}.{self.k8s_master_retriever_namespace}.svc.cluster.local"
             url = f"http://{dns_name}/search"
             logger.debug("🔗 Using Kubernetes cluster URL: %s", url)
             
         else:
-            # Determine DNS name based on Heroku dyno configuration
+            # Determine DNS name based on Dyno configuration
             if self.specific_dyno:
                 # Target a specific dyno if requested
                 dns_name = f"{self.specific_dyno}.{self.process_type}.{self.app_name}.app.localspace"
