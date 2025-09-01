@@ -119,9 +119,15 @@ TEST_CASES: List[Dict[str, Any]] = [
         "user_email": "test.user@example.com",
         "grading": True,
     },
+    # 8) Query decomposition test
+    {
+        "description": "Query decomposition enabled (auto-enables grading)",
+        "service_names": "all",
+        "decomposition": True,
+    },
 ]
 
-QUERY = "What is Snyk Code?"  # simple query for smoke-test
+QUERY = "What is Snyk Code and how does it integrate with developer workflows?"  # Complex query to test decomposition
 
 # ---------------------------------------------------------------------------#
 # Execution helpers
