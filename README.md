@@ -36,7 +36,8 @@ retriever = SnykMultiSourceRetriever(
     service_confidence_thresholds={"SOURCE_A": 0.9, "SOURCE_B": 1.0},
     service_filters={"SOURCE_B": {"@eq": {"author": "example_user"}}},
     user_email="user@example.com",
-    grading=True
+    grading=True,
+    decomposition=True
 )
 
 results = retriever.invoke("How do I rotate my credentials?")
@@ -55,4 +56,5 @@ Key constructor flags:
 | `service_confidence_thresholds` | ❌ | Per-source override for minimum confidence scores. |
 | `service_filters` | ❌ | Dictionary mapping service names to filter objects. |
 | `grading` | ❌ | When `True`, the backend returns per-token confidence scores. Defaults to `None`. |
+| `decomposition` | ❌ | When `True`, enables query decomposition to break complex queries into subproblems. Auto-enables grading. Defaults to `None`. |
 | `user_email` | ❌ | Email address of the user making the request. Used for tracking. Defaults to `None`. |

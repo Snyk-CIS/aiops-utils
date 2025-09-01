@@ -20,10 +20,11 @@ Example usage (advanced):
         service_names=["SOURCE_A", "SOURCE_B"],
         service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
         service_confidence_thresholds={"SOURCE_A": 1.0, "SOURCE_B": 1.0},
-        user_email="user@example.com"  # Optional: specify user email for tracking
+        user_email="user@example.com",  # Optional: specify user email for tracking
+        decomposition=True  # Optional: enable query decomposition for complex queries
     )
 
-    documents = retriever.invoke("How do I reset my credentials?")
+    documents = retriever.invoke("How do I reset my credentials and set up secure authentication?")
     ```
 
 Example usage (Kubernetes cluster):
@@ -122,6 +123,10 @@ class SnykMultiSourceRetriever(BaseRetriever):
         Dictionary mapping service names to filter objects.
     grading : bool, optional
         If set, include grading in the payload. Defaults to None (not sent).
+    decomposition : bool, optional
+        If set to True, enables query decomposition to break complex queries into
+        subproblems and concepts. When enabled, also auto-enables grading for better
+        result filtering. Defaults to None (not sent).
     user_email : str, optional
         Email address of the user making the request. Used for tracking and analytics.
         Defaults to None (not sent).
@@ -152,6 +157,7 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     # Additional parameters
     grading: Optional[bool] = None
+    decomposition: Optional[bool] = None
     user_email: Optional[str] = None
 
     def _get_search_url(self):
@@ -307,6 +313,10 @@ class SnykMultiSourceRetriever(BaseRetriever):
         # Add grading if specified
         if self.grading is not None:
             payload["grading"] = self.grading
+
+        # Add decomposition if specified
+        if self.decomposition is not None:
+            payload["decomposition"] = self.decomposition
 
         # Add user_email if specified
         if self.user_email is not None:
