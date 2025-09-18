@@ -31,9 +31,8 @@ Example usage (Kubernetes cluster):
     ```python
     retriever = SnykMultiSourceRetriever(
         jwt_token="your_jwt_token",
-        app_name="your_app_name",  # Still required for payload compatibility
         service_names="all",
-        use_k8s_cluster=True
+        use_k8s_cluster=True  # app_name not required when using Kubernetes
     )
 
     documents = retriever.invoke("How do I reset my credentials?")
@@ -85,9 +84,10 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     Connection parameters
     -------------------
-    app_name : str
+    app_name : str, optional
         Application identifier used to build the service discovery URL. This parameter
-        is **required** and must be provided when creating the retriever instance.
+        is **required** when ``use_k8s_cluster=False`` (default) but optional when using
+        Kubernetes cluster connections. Defaults to ``None``.
     process_type : str, optional
         Type of process to connect to. Used to build the DNS service discovery URL.
         Defaults to ``worker``.
@@ -135,7 +135,7 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     # Required parameters
     jwt_token: str
-    app_name: str
+    app_name: Optional[str] = None
 
     # Connection configuration
     process_type: str = "worker"
@@ -167,8 +167,12 @@ class SnykMultiSourceRetriever(BaseRetriever):
             dns_name = f"{self.k8s_master_retriever_service_name}.{self.k8s_master_retriever_namespace}.svc.cluster.local"
             url = f"http://{dns_name}/search"
             logger.debug("🔗 Using Kubernetes cluster URL: %s", url)
-            
+
         else:
+            # For non-Kubernetes connections, app_name is required
+            if self.app_name is None:
+                raise ValueError("app_name is required when use_k8s_cluster=False")
+
             # Determine DNS name based on Dyno configuration
             if self.specific_dyno:
                 # Target a specific dyno if requested
@@ -181,10 +185,14 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
             try:
                 # Attempt to resolve DNS to confirm connectivity
-                socket.getaddrinfo(dns_name, self.port, socket.AF_INET, socket.SOCK_STREAM)
+                socket.getaddrinfo(
+                    dns_name, self.port, socket.AF_INET, socket.SOCK_STREAM
+                )
                 logger.debug("✅ DNS resolution confirmed for %s", dns_name)
             except socket.gaierror as e:  # pylint: disable=broad-except
-                logger.warning("⚠️ DNS resolution check failed for %s: %s", dns_name, str(e))
+                logger.warning(
+                    "⚠️ DNS resolution check failed for %s: %s", dns_name, str(e)
+                )
 
         return url
 
