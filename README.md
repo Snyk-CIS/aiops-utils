@@ -58,3 +58,53 @@ Key constructor flags:
 | `grading` | ❌ | When `True`, the backend returns per-token confidence scores. Defaults to `None`. |
 | `decomposition` | ❌ | When `True`, enables query decomposition to break complex queries into subproblems. Auto-enables grading. Defaults to `None`. |
 | `user_email` | ❌ | Email address of the user making the request. Used for tracking. Defaults to `None`. |
+
+---
+
+## 🛠️ Development
+
+For maintainers and contributors working on the `aiops-utils` package.
+
+### Building the Package
+
+Use the provided script to rebuild the package:
+
+```bash
+./scripts/rebuild_package.sh
+```
+
+This script will:
+- ✅ Check your environment
+- 🔢 Optionally increment the version
+- 🧹 Clean old build artifacts
+- 🔨 Build wheel and source distributions
+- 📋 Show next steps for deployment
+
+### Manual Build Steps
+
+If you prefer manual control:
+
+```bash
+# 1. Update version in pyproject.toml (if needed)
+# 2. Clean and build
+rm -rf dist/ build/ src/aiops_utils.egg-info/
+pip install --upgrade build wheel setuptools
+python -m build
+
+# 3. Commit and push
+git add . && git commit -m "Release version X.X.X" && git push
+```
+
+### Deployment to Production
+
+1. **Push to Git** (apps install from Git, not PyPI):
+   ```bash
+   git push origin main
+   ```
+
+2. **Production apps will automatically get the latest version** on their next deployment
+
+3. **Force update existing deployments** (if needed):
+   ```bash
+   pip install --upgrade --force-reinstall git+https://github.com/Snyk-CIS/aiops-utils.git
+   ```
