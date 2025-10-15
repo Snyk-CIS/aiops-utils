@@ -19,7 +19,8 @@ Example usage (advanced):
         app_name="your_app_name",
         service_names=["SOURCE_A", "SOURCE_B"],
         service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
-        service_confidence_thresholds={"SOURCE_A": 1.0, "SOURCE_B": 1.0},
+        service_confidence_thresholds={"SOURCE_A": 1.0, "SOURCE_B": 0.3},
+        service_scoring_metrics={"SOURCE_A": "confidence_score", "SOURCE_B": "cosine_similarity"},
         user_email="user@example.com",  # Optional: specify user email for tracking
         decomposition=True  # Optional: enable query decomposition for complex queries
     )
@@ -119,6 +120,9 @@ class SnykMultiSourceRetriever(BaseRetriever):
         Dictionary mapping service names to their max document limits.
     service_confidence_thresholds : dict[str, float], optional
         Dictionary mapping service names to confidence thresholds.
+    service_scoring_metrics : dict[str, str], optional
+        Dictionary mapping service names to scoring metric types.
+        Valid values: "confidence_score" (default) or "cosine_similarity" (deterministic).
     service_filters : dict[str, dict], optional
         Dictionary mapping service names to filter objects.
     grading : bool, optional
@@ -153,6 +157,7 @@ class SnykMultiSourceRetriever(BaseRetriever):
     service_names: Union[str, List[str]]
     service_max_documents: Optional[Dict[str, int]] = None
     service_confidence_thresholds: Optional[Dict[str, float]] = None
+    service_scoring_metrics: Optional[Dict[str, str]] = None
     service_filters: Optional[Dict[str, Dict]] = None
 
     # Additional parameters
@@ -306,6 +311,15 @@ class SnykMultiSourceRetriever(BaseRetriever):
             ):
                 service_obj["confidence_threshold"] = (
                     self.service_confidence_thresholds[service_name]
+                )
+
+            # Add scoring_metric if available for this service
+            if (
+                self.service_scoring_metrics
+                and service_name in self.service_scoring_metrics
+            ):
+                service_obj["scoring_metric"] = (
+                    self.service_scoring_metrics[service_name]
                 )
 
             # Add filter if available for this service
