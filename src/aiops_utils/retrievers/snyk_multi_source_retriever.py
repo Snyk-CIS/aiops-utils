@@ -42,8 +42,10 @@ Example usage (Kubernetes cluster):
 from __future__ import annotations
 
 import os
+import json
 import socket
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 import httpx
 import requests
@@ -79,8 +81,15 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     Parameters
     ----------
-    jwt_token : str
+    jwt_token : str, optional
         Authentication bearer token.
+        Defaults to None.
+
+    custom_headers : dict, optional
+        Pre-calculated headers to use instead of auto-generating them.
+        When provided, these headers are used as-is for authentication.
+        Useful for S2S authentication with pre-calculated signatures.
+        Defaults to None.
 
     Connection parameters
     -------------------
@@ -134,8 +143,12 @@ class SnykMultiSourceRetriever(BaseRetriever):
     """
 
     # Required parameters
-    jwt_token: str
+    jwt_token: Optional[str] = None
     app_name: Optional[str] = None
+
+    s2s_api_key_id: Optional[str] = None
+    s2s_secret_key: Optional[str] = None
+    use_s2s_auth: bool = False
 
     # Connection configuration
     process_type: str = "worker"
@@ -212,19 +225,36 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
         try:
             search_url = self._get_search_url()
-            logger.info("🚀 Sending sync search request -> %s", search_url)
-            response = requests.post(
-                search_url,
-                json=payload,
-                headers=headers,
-                timeout=self.timeout,
-                verify=self.verify_ssl,
-            )
+            
+            # Add S2S signature if enabled
+            if self.use_s2s_auth:
+                parsed = urlparse(search_url)
+                path = parsed.path or "/"
+                body = json.dumps(payload, sort_keys=True)
+                headers = self._add_s2s_signature(headers, "POST", path, body)
+                
+                logger.info("🚀 Sending sync S2S-authenticated search request -> %s", search_url)
+                response = requests.post(
+                    search_url,
+                    data=body,  # Use data instead of json to preserve body for signature
+                    headers=headers,
+                    timeout=self.timeout,
+                    verify=self.verify_ssl,
+                )
+            else:
+                logger.info("🚀 Sending sync search request -> %s", search_url)
+                response = requests.post(
+                    search_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=self.timeout,
+                    verify=self.verify_ssl,
+                )
+            
             response.raise_for_status()
             json_docs: List[Dict[str, Any]] = response.json()
             logger.debug("🔍 Retrieved %d docs", len(json_docs))
             return self._json_to_documents(json_docs)
-        # pylint: disable=broad-except
         except Exception as exc:
             logger.error("💥 Sync retrieval failed: %s", exc)
             return []
@@ -241,13 +271,28 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
         try:
             search_url = self._get_search_url()
-            logger.info("🚀 (async) Sending search request -> %s", search_url)
-            async with httpx.AsyncClient(
-                timeout=self.timeout, verify=self.verify_ssl
-            ) as client:
-                response = await client.post(search_url, json=payload, headers=headers)
-                response.raise_for_status()
-                json_docs: List[Dict[str, Any]] = response.json()
+
+            # Add S2S signature if enabled
+            if self.use_s2s_auth:
+                parsed = urlparse(search_url)
+                path = parsed.path or "/"
+                body = json.dumps(payload, sort_keys=True)
+                headers = self._add_s2s_signature(headers, "POST", path, body)
+                logger.info("🚀 (async) Sending search request with S2S auth -> %s", search_url)
+
+                async with httpx.AsyncClient(
+                    timeout=self.timeout, verify=self.verify_ssl
+                ) as client:
+                    response = await client.post(search_url, data=body, headers=headers)
+            else:
+                logger.info("🚀 (async) Sending search request with JWT auth -> %s", search_url)
+                async with httpx.AsyncClient(
+                    timeout=self.timeout, verify=self.verify_ssl
+                ) as client:
+                    response = await client.post(search_url, json=payload, headers=headers)
+
+            response.raise_for_status()
+            json_docs: List[Dict[str, Any]] = response.json()
             logger.debug("🔍 (async) Retrieved %d docs", len(json_docs))
             return self._json_to_documents(json_docs)
         # pylint: disable=broad-except
@@ -262,11 +307,53 @@ class SnykMultiSourceRetriever(BaseRetriever):
     def _headers(self) -> Dict[str, str]:
         """Build request headers with authentication."""
         headers: Dict[str, str] = {"Content-Type": "application/json"}
-        if self.jwt_token:
+    
+        # S2S Authentication (if enabled)
+        if self.use_s2s_auth and self.s2s_api_key_id and self.s2s_secret_key:
+            logger.debug("🔐 Using S2S authentication")
+            # We'll add S2S headers in the request methods since we need method/path/body
+            headers["X-API-Key"] = self.s2s_api_key_id
+            # Note: Signature, timestamp, nonce will be added in request methods
+        
+        # JWT Authentication (fallback or additional)
+        elif self.jwt_token:
             headers["Authorization"] = f"Bearer {self.jwt_token}"
             logger.debug("🔑 Using JWT token for authentication")
         else:
-            logger.warning("⚠️ No JWT token provided. Request may fail")
+            logger.warning("⚠️ No authentication provided. Request may fail")
+        
+        return headers
+
+    def _add_s2s_signature(
+        self, headers: Dict[str, str], 
+        method: str, 
+        path: str, 
+        body: str
+    ) -> Dict[str, str]:
+        """Add S2S signature headers to the request."""
+        import hashlib
+        import hmac
+        import secrets
+        import time
+        
+        if not (self.use_s2s_auth and self.s2s_secret_key):
+            return headers
+        
+        timestamp = str(int(time.time()))
+        nonce = secrets.token_hex(16)
+        body_hash = hashlib.sha256(body.encode()).hexdigest()
+        canonical = f"{method}|{path}|{timestamp}|{nonce}|{body_hash}"
+        
+        signature = hmac.new(
+            self.s2s_secret_key.encode(),
+            canonical.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        headers["X-Timestamp"] = timestamp
+        headers["X-Nonce"] = nonce
+        headers["X-Signature"] = signature
+        
         return headers
 
     def _build_payload(self, query: str) -> Dict[str, Any]:
