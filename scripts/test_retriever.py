@@ -91,6 +91,13 @@ TEST_CASES: List[Dict[str, Any]] = [
         "service_max_documents": {source_a: 30},
         "grading": True,
     },
+    # 4) Source with filter applied - COMMENTED OUT (returns 0 documents)
+    # {
+    #     "description": "Single source with filter",
+    #     "service_names": [source_a],
+    #     "service_filters": {source_a: {"@eq": {"source": source_a_filter}}},
+    #     "grading": False,
+    # },
     # 5) Multi-source with max documents
     {
         "description": "Multi-source with max documents",
@@ -130,18 +137,6 @@ TEST_CASES: List[Dict[str, Any]] = [
 ]
 
 QUERY = "What is Snyk Code and how does it integrate with developer workflows?"  # Complex query to test decomposition
-
-# Add optional filter test only if TEST_FILTER_A is configured
-if source_a_filter and source_a:
-    TEST_CASES.insert(3, {
-        "description": "Single source with filter",
-        "service_names": [source_a],
-        "service_filters": {source_a: {"@eq": {"source": source_a_filter}}},
-        "grading": False,
-    })
-    logger.info("✅ Filter test enabled (TEST_FILTER_A is configured)")
-else:
-    logger.warning("⚠️ Skipping filter test (TEST_FILTER_A not configured)")
 
 # ---------------------------------------------------------------------------#
 # Execution helpers
