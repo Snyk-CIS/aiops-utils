@@ -33,7 +33,8 @@ retriever = SnykMultiSourceRetriever(
     app_name="your_app_name",
     service_names=["SOURCE_A", "SOURCE_B"],
     service_max_documents={"SOURCE_A": 5, "SOURCE_B": 3},
-    service_confidence_thresholds={"SOURCE_A": 0.9, "SOURCE_B": 1.0},
+    service_confidence_thresholds={"SOURCE_A": 0.9, "SOURCE_B": 0.3},
+    service_scoring_metrics={"SOURCE_A": "confidence_score", "SOURCE_B": "cosine_similarity"},
     service_filters={"SOURCE_B": {"@eq": {"author": "example_user"}}},
     user_email="user@example.com",
     grading=True,
@@ -54,6 +55,7 @@ Key constructor flags:
 | `service_names` | ✅ | Either `'all'` or a list of specific back-end sources. |
 | `service_max_documents` | ❌ | Per-source override for maximum number of documents to return. |
 | `service_confidence_thresholds` | ❌ | Per-source override for minimum confidence scores. |
+| `service_scoring_metrics` | ❌ | Per-source override for scoring metric type. Use `'cosine_similarity'` for deterministic results (range -1 to 1) or `'confidence_score'` (default) for experimental scores. |
 | `service_filters` | ❌ | Dictionary mapping service names to filter objects. |
 | `grading` | ❌ | When `True`, the backend returns per-token confidence scores. Defaults to `None`. |
 | `decomposition` | ❌ | When `True`, enables query decomposition to break complex queries into subproblems. Auto-enables grading. Defaults to `None`. |
