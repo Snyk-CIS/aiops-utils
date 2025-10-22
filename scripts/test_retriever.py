@@ -125,6 +125,15 @@ TEST_CASES: List[Dict[str, Any]] = [
         "service_names": "all",
         "decomposition": True,
     },
+    # 9) Cosine similarity scoring metric with threshold
+    {
+        "description": "Cosine similarity scoring with threshold (0.7)",
+        "service_names": [source_a],
+        "service_scoring_metrics": {source_a: "cosine_similarity"},
+        "service_confidence_thresholds": {source_a: 0.7},
+        "service_max_documents": {source_a: 10},
+        "grading": False,
+    },
 ]
 
 QUERY = "What is Snyk Code and how does it integrate with developer workflows?"  # Complex query to test decomposition
