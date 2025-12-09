@@ -56,6 +56,7 @@ from langchain_core.callbacks import (
 )
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
+from pydantic import field_validator
 
 import logging
 
@@ -168,15 +169,27 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     # Service parameters
     service_names: Union[str, List[str]]
-    service_max_documents: Optional[Dict[str, int]] = None
-    service_confidence_thresholds: Optional[Dict[str, float]] = None
-    service_scoring_metrics: Optional[Dict[str, str]] = None
-    service_filters: Optional[Dict[str, Dict]] = None
+    service_max_documents: Optional[Dict[str, Any]] = None
+    service_confidence_thresholds: Optional[Dict[str, Any]] = None
+    service_scoring_metrics: Optional[Dict[str, Any]] = None
+    service_filters: Optional[Dict[str, Any]] = None
 
     # Additional parameters
     grading: Optional[bool] = None
     decomposition: Optional[bool] = None
     user_email: Optional[str] = None
+
+    @field_validator('service_max_documents', 'service_confidence_thresholds', 
+                     'service_scoring_metrics', 'service_filters', mode='before')
+    @classmethod
+    def allow_none_values(cls, v):
+        """Allow None values within the dictionaries."""
+        if v is None:
+            return v
+        # If it's a dict, return as-is (None values are allowed)
+        if isinstance(v, dict):
+            return v
+        return v
 
     def _get_search_url(self):
         """Build the search URL using DNS Service Discovery or Kubernetes cluster DNS."""
@@ -384,33 +397,33 @@ class SnykMultiSourceRetriever(BaseRetriever):
         for service_name in names:
             service_obj = {"service": service_name}
 
-            # Add max_documents if available for this service
+            # Add max_documents if available for this service (None values allowed)
             if (
-                self.service_max_documents
+                self.service_max_documents is not None
                 and service_name in self.service_max_documents
             ):
                 service_obj["max_documents"] = self.service_max_documents[service_name]
 
-            # Add confidence_threshold if available for this service
+            # Add confidence_threshold if available for this service (None values allowed)
             if (
-                self.service_confidence_thresholds
+                self.service_confidence_thresholds is not None
                 and service_name in self.service_confidence_thresholds
             ):
                 service_obj["confidence_threshold"] = (
                     self.service_confidence_thresholds[service_name]
                 )
 
-            # Add scoring_metric if available for this service
+            # Add scoring_metric if available for this service (None values allowed)
             if (
-                self.service_scoring_metrics
+                self.service_scoring_metrics is not None
                 and service_name in self.service_scoring_metrics
             ):
                 service_obj["scoring_metric"] = (
                     self.service_scoring_metrics[service_name]
                 )
 
-            # Add filter if available for this service
-            if self.service_filters and service_name in self.service_filters:
+            # Add filter if available for this service (None values allowed)
+            if self.service_filters is not None and service_name in self.service_filters:
                 service_obj["filter"] = self.service_filters[service_name]
 
             services_list.append(service_obj)
