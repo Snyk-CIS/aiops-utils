@@ -144,6 +144,19 @@ class SnykMultiSourceRetriever(BaseRetriever):
     user_email : str, optional
         Email address of the user making the request. Used for tracking and analytics.
         Defaults to None (not sent).
+    grading_top_k : int, optional
+        Override for number of top graded documents to return. -1 returns all.
+        Defaults to None (not sent, uses server default).
+    grading_max_concurrent : int, optional
+        Override for maximum concurrent grading calls.
+        Defaults to None (not sent, uses server default).
+    grading_mode : str, optional
+        Override for grading content extraction mode. Valid values are:
+        "context_only", "content_only", or "context_prepended".
+        Defaults to None (not sent, uses server default).
+    source_consolidation_threshold : int, optional
+        Override for minimum chunks from same source to trigger consolidation.
+        Defaults to None (not sent, uses server default).
 
     """
 
@@ -178,6 +191,12 @@ class SnykMultiSourceRetriever(BaseRetriever):
     grading: Optional[bool] = None
     decomposition: Optional[bool] = None
     user_email: Optional[str] = None
+
+    # Grading configuration parameters
+    grading_top_k: Optional[int] = None
+    grading_max_concurrent: Optional[int] = None
+    grading_mode: Optional[str] = None  # "context_only", "content_only", or "context_prepended"
+    source_consolidation_threshold: Optional[int] = None
 
     @field_validator('service_max_documents', 'service_confidence_thresholds', 
                      'service_scoring_metrics', 'service_filters', mode='before')
@@ -443,6 +462,19 @@ class SnykMultiSourceRetriever(BaseRetriever):
         # Add user_email if specified
         if self.user_email is not None:
             payload["user_email"] = self.user_email
+
+        # Add grading configuration parameters if specified
+        if self.grading_top_k is not None:
+            payload["grading_top_k"] = self.grading_top_k
+
+        if self.grading_max_concurrent is not None:
+            payload["grading_max_concurrent"] = self.grading_max_concurrent
+
+        if self.grading_mode is not None:
+            payload["grading_mode"] = self.grading_mode
+
+        if self.source_consolidation_threshold is not None:
+            payload["source_consolidation_threshold"] = self.source_consolidation_threshold
 
         logger.debug("📝 Built payload: %s", payload)
         return payload
