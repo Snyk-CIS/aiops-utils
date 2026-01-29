@@ -38,6 +38,17 @@ Example usage (Kubernetes cluster):
 
     documents = retriever.invoke("How do I reset my credentials?")
     ```
+
+Example usage (direct URL - for apps without internal routing):
+    ```python
+    retriever = SnykMultiSourceRetriever(
+        jwt_token="your_jwt_token",
+        service_names="all",
+        base_url="https://cis-master-retriever-xyz.herokuapp.com"  # Direct URL
+    )
+
+    documents = retriever.invoke("How do I reset my credentials?")
+    ```
 """
 
 from __future__ import annotations
@@ -95,10 +106,14 @@ class SnykMultiSourceRetriever(BaseRetriever):
 
     Connection parameters
     -------------------
+    base_url : str, optional
+        Direct URL to the retriever service (e.g., "https://my-retriever.herokuapp.com").
+        When provided, this URL is used directly instead of constructing via DNS discovery.
+        Useful for apps without Heroku internal routing enabled. Defaults to ``None``.
     app_name : str, optional
         Application identifier used to build the service discovery URL. This parameter
-        is **required** when ``use_k8s_cluster=False`` (default) but optional when using
-        Kubernetes cluster connections. Defaults to ``None``.
+        is **required** when ``use_k8s_cluster=False`` and ``base_url`` is not provided,
+        but optional when using Kubernetes cluster connections or direct URL. Defaults to ``None``.
     process_type : str, optional
         Type of process to connect to. Used to build the DNS service discovery URL.
         Defaults to ``worker``.
@@ -163,6 +178,7 @@ class SnykMultiSourceRetriever(BaseRetriever):
     # Required parameters
     jwt_token: Optional[str] = None
     app_name: Optional[str] = None
+    base_url: Optional[str] = None  # Direct URL (bypasses DNS discovery)
 
     s2s_api_key_id: Optional[str] = None
     s2s_secret_key: Optional[str] = None
@@ -211,38 +227,47 @@ class SnykMultiSourceRetriever(BaseRetriever):
         return v
 
     def _get_search_url(self):
-        """Build the search URL using DNS Service Discovery or Kubernetes cluster DNS."""
+        """Build the search URL using direct URL, DNS Service Discovery, or Kubernetes cluster DNS."""
+        # Priority 1: Direct URL (bypasses all DNS discovery)
+        if self.base_url:
+            # Strip trailing slash and append /search
+            url = self.base_url.rstrip("/") + "/search"
+            logger.debug("🔗 Using direct URL: %s", url)
+            return url
+
+        # Priority 2: Kubernetes cluster DNS
         if self.use_k8s_cluster:
             # Build Kubernetes cluster URL with fixed service and namespace
             dns_name = f"{self.k8s_master_retriever_service_name}.{self.k8s_master_retriever_namespace}.svc.cluster.local"
             url = f"http://{dns_name}/search"
             logger.debug("🔗 Using Kubernetes cluster URL: %s", url)
+            return url
 
+        # Priority 3: Heroku Private Spaces internal routing DNS
+        # For non-Kubernetes connections, app_name is required
+        if self.app_name is None:
+            raise ValueError("app_name or base_url is required when use_k8s_cluster=False")
+
+        # Determine DNS name based on Dyno configuration
+        if self.specific_dyno:
+            # Target a specific dyno if requested
+            dns_name = f"{self.specific_dyno}.{self.process_type}.{self.app_name}.app.localspace"
         else:
-            # For non-Kubernetes connections, app_name is required
-            if self.app_name is None:
-                raise ValueError("app_name is required when use_k8s_cluster=False")
+            # Use round-robin DNS distribution across dynos
+            dns_name = f"{self.process_type}.{self.app_name}.app.localspace"
 
-            # Determine DNS name based on Dyno configuration
-            if self.specific_dyno:
-                # Target a specific dyno if requested
-                dns_name = f"{self.specific_dyno}.{self.process_type}.{self.app_name}.app.localspace"
-            else:
-                # Use round-robin DNS distribution across dynos
-                dns_name = f"{self.process_type}.{self.app_name}.app.localspace"
+        url = f"http://{dns_name}:{self.port}/search"
 
-            url = f"http://{dns_name}:{self.port}/search"
-
-            try:
-                # Attempt to resolve DNS to confirm connectivity
-                socket.getaddrinfo(
-                    dns_name, self.port, socket.AF_INET, socket.SOCK_STREAM
-                )
-                logger.debug("✅ DNS resolution confirmed for %s", dns_name)
-            except socket.gaierror as e:  # pylint: disable=broad-except
-                logger.warning(
-                    "⚠️ DNS resolution check failed for %s: %s", dns_name, str(e)
-                )
+        try:
+            # Attempt to resolve DNS to confirm connectivity
+            socket.getaddrinfo(
+                dns_name, self.port, socket.AF_INET, socket.SOCK_STREAM
+            )
+            logger.debug("✅ DNS resolution confirmed for %s", dns_name)
+        except socket.gaierror as e:  # pylint: disable=broad-except
+            logger.warning(
+                "⚠️ DNS resolution check failed for %s: %s", dns_name, str(e)
+            )
 
         return url
 
